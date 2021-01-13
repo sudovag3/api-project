@@ -1,8 +1,9 @@
+from django.core.handlers.wsgi import WSGIRequest
 from django.shortcuts import render
 from rest_framework import generics
 from base.serializers import *
 from base.models import AccountsAndCards
-from .services import ParameterView
+from .services import ParameterView, get_balance
 
 
 # Create your views here.
@@ -29,7 +30,7 @@ class DetailView(ParameterView, generics.RetrieveUpdateDestroyAPIView):
         return queryset
 
 
-class ListView(ParameterView,generics.ListAPIView):
+class ListView(ParameterView, generics.ListAPIView):
     """
     Api view для просмотра моделей
     """
@@ -45,5 +46,17 @@ class ListView(ParameterView,generics.ListAPIView):
         return queryset
 
 
+def get_balance_from_currently_date(request):
+    """
+
+    :param request:
+    :return: JsonResponse, который формируется в функции get_balance
+    """
+
+    from_date = request.GET.get('from_date')
+    to_date = request.GET.get('to_date')
+    user_id = request.GET.get('user_id')
+    print(user_id)
 
 
+    return get_balance(from_date, to_date, user_id)

@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 
 USER = models.ForeignKey(User, on_delete=models.CASCADE)
-DATE = models.DateTimeField(verbose_name='Дата')
+DATE = models.DateField(verbose_name='Дата')
 
 
 class AccountsAndCards(models.Model):
@@ -10,7 +10,7 @@ class AccountsAndCards(models.Model):
     account_name = models.TextField(verbose_name='Название счета')
     balance_on_start = models.IntegerField(verbose_name='Баланс на старте')
     credit_limit = models.PositiveIntegerField(verbose_name='Кредитный лимит')
-
+    date_start = models.DateField(verbose_name='Дата создания')
     def __str__(self):
         return f'#{self.user} {self.account_name} {self.balance_on_start} {self.credit_limit}'
 
@@ -78,7 +78,7 @@ class Incomes(models.Model):
     date = DATE
     amount = models.PositiveIntegerField(verbose_name='Сумма')
     description = models.TextField(verbose_name='Описание')
-    expense = models.ForeignKey(ReferenceViews, on_delete=models.SET_NULL, verbose_name='Доход', null=True)
+    income = models.ForeignKey(ReferenceViews, on_delete=models.SET_NULL, verbose_name='Доход', null=True)
     account = models.ForeignKey(AccountsAndCards, on_delete=models.CASCADE, verbose_name='Счёт')
 
     class Meta:
@@ -90,7 +90,7 @@ class Depreciations(models.Model):
     user = USER
     name = models.TextField(verbose_name='Название')
     price = models.PositiveIntegerField(verbose_name='Цена')
-    date_buy = models.DateTimeField(verbose_name='Дата покупки')
+    date_buy = models.DateField(verbose_name='Дата покупки')
     service_time = models.PositiveIntegerField(verbose_name='Срок гарантии')
     sum_final = models.PositiveIntegerField(verbose_name='Отложено')
 
