@@ -1,4 +1,4 @@
-
+from django.db.models import Sum
 from rest_framework import serializers
 from rest_framework import generics
 from django.http import JsonResponse
@@ -47,18 +47,31 @@ def get_balance_from_date(to_date: str, account_id: int, from_date: str = '', re
     if res == 0:
         res = account.balance_on_start - account.credit_limit
 
-    for i in Incomes.objects.filter(date__range=[from_date, to_date]):
-        income_sum += i.amount
-        res += i.amount
-    for i in Transfers.objects.filter(date__range=[from_date, to_date], on_the_account=account):
-        res += i.deposit_amount
-        income_sum += i.deposit_amount
-    for i in Transfers.objects.filter(date__range=[from_date, to_date], from_the_account=account):
-        res -= i.deposit_amount
-        expense_sum -= i.deposit_amount
-    for i in Expenses.objects.filter(date__range=[from_date, to_date]):
-        res -= i.amount
-        expense_sum -= i.amount
+    if Incomes.objects.filter(date__range=[from_date, to_date]).aggregate(Sum('amount'))['amount__sum'] is not None:
+        income_sum += Incomes.objects.filter(date__range=[from_date,
+                                                          to_date]).aggregate(Sum('amount'))['amount__sum']
+    if Transfers.objects.filter(date__range=[from_date, to_date],on_the_account=account).aggregate(Sum('deposit_amount'))['deposit_amount__sum'] is not None:
+        income_sum += Transfers.objects.filter(date__range=[from_date,
+                                                            to_date],
+                                               on_the_account=account).aggregate(Sum('deposit_amount'))['deposit_amount__sum']
+
+    res += income_sum
+
+    if Expenses.objects.filter(date__range=[from_date, to_date]).aggregate(Sum('amount'))['amount__sum'] is not None:
+        res -= Expenses.objects.filter(date__range=[from_date,
+                                                    to_date]).aggregate(Sum('amount'))['amount__sum']
+        expense_sum += Expenses.objects.filter(date__range=[from_date,
+                                                            to_date]).aggregate(Sum('amount'))['amount__sum']
+    if Transfers.objects.filter(date__range=[from_date, to_date],from_the_account=account).aggregate(Sum('deposit_amount'))['deposit_amount__sum'] is not None:
+
+        res -= Transfers.objects.filter(date__range=[from_date,
+                                                     to_date],
+                                        from_the_account=account).aggregate(Sum('deposit_amount'))['deposit_amount__sum']
+        expense_sum += Transfers.objects.filter(date__range=[from_date,
+                                                             to_date],
+                                                from_the_account=account).aggregate(Sum('deposit_amount'))[
+            'deposit_amount__sum']
+
     return [res, income_sum, expense_sum]
 
 
@@ -74,7 +87,7 @@ def get_balance(from_date: str, to_date: str, user_id: int) -> JsonResponse:
 
     for i in AccountsAndCards.objects.filter(user=user_id):
         print(i.account_name)
-        start_sum = get_balance_from_date(to_date=to_date, account_id=i.id)[0]
+        start_sum = get_balance_from_date(to_date=from_date, account_id=i.id)[0]
         sum_date = get_balance_from_date(to_date=to_date, account_id=i.id, from_date= from_date, res=start_sum)
         res.update({
             f'{i.id}': {
