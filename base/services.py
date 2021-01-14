@@ -1,4 +1,5 @@
 from django.db.models import Sum
+from django.db.models.functions import Coalesce
 from rest_framework import serializers
 from rest_framework import generics
 from django.http import JsonResponse
@@ -47,30 +48,35 @@ def get_balance_from_date(to_date: str, account_id: int, from_date: str = '', re
     if res == 0:
         res = account.balance_on_start - account.credit_limit
 
-    if Incomes.objects.filter(date__range=[from_date, to_date]).aggregate(Sum('amount'))['amount__sum'] is not None:
-        income_sum += Incomes.objects.filter(date__range=[from_date,
-                                                          to_date]).aggregate(Sum('amount'))['amount__sum']
-    if Transfers.objects.filter(date__range=[from_date, to_date],on_the_account=account).aggregate(Sum('deposit_amount'))['deposit_amount__sum'] is not None:
-        income_sum += Transfers.objects.filter(date__range=[from_date,
-                                                            to_date],
-                                               on_the_account=account).aggregate(Sum('deposit_amount'))['deposit_amount__sum']
+
+    income_sum += Incomes.objects.filter(date__range=[from_date,
+                                                      to_date],
+                                         account = account).aggregate(sum = Coalesce(Sum('amount'), 0))['sum']
+
+    income_sum += Transfers.objects.filter(date__range=[from_date,
+                                                        to_date],
+                                           on_the_account=account).aggregate(sum = Coalesce(Sum('deposit_amount'), 0))['sum']
 
     res += income_sum
 
-    if Expenses.objects.filter(date__range=[from_date, to_date]).aggregate(Sum('amount'))['amount__sum'] is not None:
-        res -= Expenses.objects.filter(date__range=[from_date,
-                                                    to_date]).aggregate(Sum('amount'))['amount__sum']
-        expense_sum += Expenses.objects.filter(date__range=[from_date,
-                                                            to_date]).aggregate(Sum('amount'))['amount__sum']
-    if Transfers.objects.filter(date__range=[from_date, to_date],from_the_account=account).aggregate(Sum('deposit_amount'))['deposit_amount__sum'] is not None:
+    res -= Expenses.objects.filter(date__range=[from_date,
+                                                to_date],
+                                   account = account).aggregate(sum = Coalesce(Sum('amount'),
+                                                                               0))['sum']
+    expense_sum += Expenses.objects.filter(date__range=[from_date,
+                                                        to_date],
+                                           account = account).aggregate(sum = Coalesce(Sum('amount'),
+                                                                                       0))['sum']
 
-        res -= Transfers.objects.filter(date__range=[from_date,
-                                                     to_date],
-                                        from_the_account=account).aggregate(Sum('deposit_amount'))['deposit_amount__sum']
-        expense_sum += Transfers.objects.filter(date__range=[from_date,
-                                                             to_date],
-                                                from_the_account=account).aggregate(Sum('deposit_amount'))[
-            'deposit_amount__sum']
+    res -= Transfers.objects.filter(date__range=[from_date,
+                                                 to_date],
+                                    from_the_account=account).aggregate(sum = Coalesce(Sum('deposit_amount'),
+                                                                                       0))['sum']
+
+    expense_sum += Transfers.objects.filter(date__range=[from_date,
+                                                         to_date],
+                                            from_the_account=account).aggregate(sum = Coalesce(Sum('deposit_amount'),
+                                                                                       0))['sum']
 
     return [res, income_sum, expense_sum]
 

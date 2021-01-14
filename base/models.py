@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 
 USER = models.ForeignKey(User, on_delete=models.CASCADE)
-DATE = models.DateField(verbose_name='Дата')
+DATE = models.DateField(verbose_name='Дата', auto_now_add=True)
 
 
 class AccountsAndCards(models.Model):
@@ -10,7 +10,7 @@ class AccountsAndCards(models.Model):
     account_name = models.TextField(verbose_name='Название счета')
     balance_on_start = models.IntegerField(verbose_name='Баланс на старте')
     credit_limit = models.PositiveIntegerField(verbose_name='Кредитный лимит')
-    date_start = models.DateField(verbose_name='Дата создания')
+    date_start = models.DateField(verbose_name='Дата создания', auto_now_add=True)
     def __str__(self):
         return f'#{self.user} {self.account_name} {self.balance_on_start} {self.credit_limit}'
 
@@ -90,7 +90,7 @@ class Depreciations(models.Model):
     user = USER
     name = models.TextField(verbose_name='Название')
     price = models.PositiveIntegerField(verbose_name='Цена')
-    date_buy = models.DateField(verbose_name='Дата покупки')
+    date_buy = models.DateField(verbose_name='Дата покупки', auto_now_add=True)
     service_time = models.PositiveIntegerField(verbose_name='Срок гарантии')
     sum_final = models.PositiveIntegerField(verbose_name='Отложено')
 
