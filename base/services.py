@@ -1,8 +1,12 @@
+import json
+
+from django.conf import settings
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework import generics
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from .models import *
 from .serializers import CreateModelSerializer
 from typing import Dict,List
@@ -30,7 +34,85 @@ class ParameterView:
         return CreateModelSerializer
 
 
+def get_bdr_by_month(month_number: int, month: str, user: object, year: int) -> Dict:
+    """
+    Функция, считающая статистику за определённый месяц
+    :param month_number: Номер месяца, по которому считать
+    :param month: Название этого месяца
+    :param user: объект модели User, для которого считать статистику
+    :param year: год, из которого брать месяц
+    :return: Dict со статистикой
+    """
+    result = {'Месяц-год': f'{month} - {year}',
+              'Доходы': list(Incomes.objects.filter(user=user,
+                                                    date__month=month_number,
+                                                    date__year=year).values_list('income__view_name',
+                                                                                 'income__type__type_name').annotate(
+                  Sum('amount'))),
+              'Расходы': list(Expenses.objects.filter(user=user,
+                                                      date__month=month_number,
+                                                      date__year=year).values_list('expense__view_name',
+                                                                                   'expense__type__type_name').annotate(
+                  Sum('amount'))),
+
+              'Прибыль': Incomes.objects.filter(user=user,
+                                                date__month=month_number,
+                                                date__year=year).aggregate(sum=Coalesce(Sum('amount'), 0))['sum'] -
+                         Expenses.objects.filter(user=user,
+                                                 date__month=month_number,
+                                                 date__year=year).aggregate(sum=Coalesce(Sum('amount'), 0))['sum']}
+
+    # result['Incomes'] = get_report(Expenses.objects.filter(user=user).values('expense'))
+    return result
+
+
+def get_bdr_by_year(user: object, year: int) -> Dict:
+    """
+    Функция, считающая статистику за определённый год
+    :param user: объект модели User, для которого считать статистику
+    :param year: год
+    :return: Dict со статистикой
+    """
+    result = {'Месяц-год': f'{year}',
+              'Доходы': list(Incomes.objects.filter(user=user,
+                                                    date__year=year).values_list('income__view_name',
+                                                                                 'income__type__type_name').annotate(
+                  Sum('amount'))),
+              'Расходы': list(Expenses.objects.filter(user=user,
+                                                      date__year=year).values_list('expense__view_name',
+                                                                                   'expense__type__type_name').annotate(
+                  Sum('amount'))),
+
+              'Прибыль': Incomes.objects.filter(user=user,
+                                                date__year=year).aggregate(sum=Coalesce(Sum('amount'), 0))['sum'] -
+                         Expenses.objects.filter(user=user,
+                                                 date__year=year).aggregate(sum=Coalesce(Sum('amount'), 0))['sum']}
+
+    # result['Incomes'] = get_report(Expenses.objects.filter(user=user).values('expense'))
+    return result
+
+
+def get_bdr(user_id: int) -> HttpResponse:
+    """
+
+    :param user_id:
+    :return:
+    """
+    res = {}
+    user = User.objects.get(id=user_id)
+    date_user = user.date_joined.year
+    for i in range(date_user, timezone.now().year + 1):
+
+        for month in settings.DATE_DICT:
+            res[f'{i}-{month}'] = get_bdr_by_month(month, settings.DATE_DICT[month], user, i)
+            if month == 12:
+                res[f'{i}'] = get_bdr_by_year(user, i)
+
+    return JsonResponse(res)
+
+
 def get_balance_from_date(to_date: str, account_id: int, from_date: str = '', res: int = 0) -> List[int]:
+
     """
     Функция, высчитывающая данные о счете по конкретным датам
     :param to_date: До какой даты проводить расчёты
@@ -47,7 +129,6 @@ def get_balance_from_date(to_date: str, account_id: int, from_date: str = '', re
         from_date = account.date_start
     if res == 0:
         res = account.balance_on_start - account.credit_limit
-
 
     income_sum += Incomes.objects.filter(date__range=[from_date,
                                                       to_date],
@@ -104,6 +185,5 @@ def get_balance(from_date: str, to_date: str, user_id: int) -> JsonResponse:
                 'on_end': sum_date[0],
             }
         })
-
 
     return JsonResponse(res)

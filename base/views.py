@@ -3,7 +3,7 @@ from django.shortcuts import render
 from rest_framework import generics
 from base.serializers import *
 from base.models import AccountsAndCards
-from .services import ParameterView, get_balance
+from .services import ParameterView, get_balance, get_bdr
 
 
 # Create your views here.
@@ -48,7 +48,7 @@ class ListView(ParameterView, generics.ListAPIView):
 
 def get_balance_from_currently_date(request):
     """
-
+    Api для получения баланса согласно дате
     :param request:
     :return: JsonResponse, который формируется в функции get_balance
     """
@@ -56,7 +56,17 @@ def get_balance_from_currently_date(request):
     from_date = request.GET.get('from_date')
     to_date = request.GET.get('to_date')
     user_id = request.GET.get('user_id')
-    print(user_id)
-
 
     return get_balance(from_date, to_date, user_id)
+
+
+def get_bdr_from_currently_date(request):
+    """
+    Api для составления статистики
+    :param request:
+    :return: JsonResponse, который формируется в функции get_bdr
+    """
+
+    user_id = request.GET.get('user_id')
+
+    return get_bdr(user_id)
